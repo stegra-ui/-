@@ -192,7 +192,7 @@ function renderCustomerForm() {
       if (result.success) {
         form.reset();
         form.style.display = 'none';
-        messageEl.innerHTML = '<div class="message success">予約を受け付けました<br>1～2日以内にご予約受付完了のメールを送らせていただきます。</div>';
+        messageEl.innerHTML = '<div class="message success">予約を受け付けました<br>1～2日以内にご予約受付完了のメールを送らせていただきます。<br><br>【メール受信に関するご注意】<br>当店からの確認メールが届かない場合がございます。icloud.comからのメールを受信できるよう、ドメイン指定受信を設定してください。</div>';
       } else {
         messageEl.innerHTML = `<div class="message error">予約に失敗しました: ${result.message || '不明なエラー'}</div>`;
         submitBtn.disabled = false;
