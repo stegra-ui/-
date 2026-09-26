@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>学生服 予約管理システム</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: #f5f6f8;
+    margin: 0;
+    padding: 24px;
+    color: #333;
+  }
+  .container {
+    max-width: 640px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px 28px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  h1 { font-size: 20px; margin-bottom: 20px; }
+  label {
+    display: block;
+    font-size: 14px;
+    font-weight: bold;
+    margin-top: 16px;
+    margin-bottom: 6px;
+  }
+  input, select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  button {
+    margin-top: 24px;
+    width: 100%;
+    padding: 12px;
+    background: #2b6cb0;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  button:disabled { background: #999; cursor: default; }
+  .message {
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  .message.success { background: #e6f7ea; color: #1e7a34; }
+  .message.error { background: #fdecea; color: #b3261e; }
+
+  /* 管理ページ用 */
+  .admin-container { max-width: 960px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
+  th, td { border: 1px solid #e0e0e0; padding: 8px; text-align: left; white-space: nowrap; }
+  th { background: #f0f2f5; }
+  select.status-select { width: auto; padding: 4px 6px; font-size: 13px; }
+  .cancel-btn {
+    width: auto;
+    padding: 6px 10px;
+    font-size: 12px;
+    background: #b3261e;
+    margin-top: 0;
+  }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; }
+  .reload-btn {
+    width: auto;
+    padding: 6px 14px;
+    font-size: 13px;
+  }
+  .empty { color: #888; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwoZEuRFkbz8A6g9gID_NUTayRNsARMBvjoknTRw1XYyMyn_b7Nz9Qpxg2N_h9_jHRQ8g/exec';
+
+const MENUS = ['制服一式', '上着のみ', 'ズボン・スカートのみ', 'その他'];
+const STATUS_OPTIONS = ['予約中', '対応済み', 'キャンセル'];
+
+const params = new URLSearchParams(location.search);
+const isAdmin = params.get('admin') === 'true';
+
+// GASにactionとデータを送るための共通関数
+// text/plainで送ることでCORSのプリフライトを回避する
+async function callApi(action, data = {}) {
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action, ...data })
+    });
+    if (!res.ok) {
+      throw new Error('サーバーエラー: ' + res.status);
+    }
+    return await res.json();
+  } catch (err) {
+    console.error('API呼び出しでエラーが発生しました:', err);
+    throw err;
+  }
+}
+
+if (isAdmin) {
+  renderAdminPage();
+} else {
+  renderCustomerForm();
+}
+
+// ===== お客さん用 予約フォーム =====
+function renderCustomerForm() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="container">
+      <h1>制服 ご予約フォーム</h1>
+      <form id="reservationForm">
+        <label for="name">お名前</label>
+        <input type="text" id="name" required>
+
+        <label for="gender">性別</label>
+        <select id="gender" required>
+          <option value="">選択してください</option>
+          <option value="男性">男性</option>
+          <option value="女性">女性</option>
+          <option value="その他">その他</option>
+        </select>
+
+        <label for="school">学校名</label>
+        <input type="text" id="school" required>
+
+        <label for="phone">電話番号</label>
+        <input type="tel" id="phone" required>
+
+        <label for="email">メールアドレス</label>
+        <input type="email" id="email" required>
+
+        <label for="date">希望日</label>
+        <input type="date" id="date" required>
+
+        <label for="menu">メニュー</label>
+        <select id="menu" required>
+          <option value="">選択してください</option>
+          ${MENUS.map(m => `<option value="${m}">${m}</option>`).join('')}
+        </select>
+
+        <button type="submit" id="submitBtn">予約する</button>
+      </form>
+      <div id="message"></div>
+    </div>
+  `;
+
+  const form = document.getElementById('reservationForm');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submitBtn = document.getElementById('submitBtn');
+    const messageEl = document.getElementById('message');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '送信中...';
+    messageEl.innerHTML = '';
+
+    const data = {
+      name: document.getElementById('name').value,
+      gender: document.getElementById('gender').value,
+      school: document.getElementById('school').value,
+      phone: document.getElementById('phone').value,
+      email: document.getElementById('email').value,
+      date: document.getElementById('date').value,
+      menu: document.getElementById('menu').value
+    };
+
+    try {
+      const result = await callApi('create', data);
+      if (result.success) {
+        form.reset();
+        form.style.display = 'none';
+        messageEl.innerHTML = '<div class="message success">予約を受け付けました</div>';
+      } else {
+        messageEl.innerHTML = `<div class="message error">予約に失敗しました: ${result.message || '不明なエラー'}</div>`;
+        submitBtn.disabled = false;
+        submitBtn.textContent = '予約する';
+      }
+    } catch (err) {
+      messageEl.innerHTML = '<div class="message error">通信エラーが発生しました。時間をおいて再度お試しください。</div>';
+      submitBtn.disabled = false;
+      submitBtn.textContent = '予約する';
+    }
+  });
+}
+
+// ===== オーナー用 管理ページ =====
+function renderAdminPage() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="container admin-container">
+      <div class="toolbar">
+        <h1>予約管理</h1>
+        <button class="reload-btn" id="reloadBtn">再読み込み</button>
+      </div>
+      <div id="adminBody">読み込み中...</div>
+    </div>
+  `;
+  document.getElementById('reloadBtn').addEventListener('click', loadReservations);
+  loadReservations();
+}
+
+async function loadReservations() {
+  const adminBody = document.getElementById('adminBody');
+  adminBody.textContent = '読み込み中...';
+  try {
+    const result = await callApi('list');
+    if (!result.success) {
+      adminBody.innerHTML = `<div class="message error">読み込みに失敗しました: ${result.message || '不明なエラー'}</div>`;
+      return;
+    }
+    renderTable(result.data);
+  } catch (err) {
+    adminBody.innerHTML = '<div class="message error">通信エラーが発生しました。</div>';
+  }
+}
+
+function renderTable(rows) {
+  const adminBody = document.getElementById('adminBody');
+  if (!rows || rows.length === 0) {
+    adminBody.innerHTML = '<p class="empty">予約はまだありません</p>';
+    return;
+  }
+
+  adminBody.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>名前</th>
+          <th>性別</th>
+          <th>学校名</th>
+          <th>電話番号</th>
+          <th>メールアドレス</th>
+          <th>希望日</th>
+          <th>メニュー</th>
+          <th>ステータス</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  `;
+
+  const tbody = document.getElementById('tableBody');
+  rows.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(row['名前'])}</td>
+      <td>${escapeHtml(row['性別'])}</td>
+      <td>${escapeHtml(row['学校名'])}</td>
+      <td>${escapeHtml(row['電話番号'])}</td>
+      <td>${escapeHtml(row['メールアドレス'])}</td>
+      <td>${escapeHtml(formatDate(row['希望日']))}</td>
+      <td>${escapeHtml(row['メニュー'])}</td>
+      <td></td>
+      <td></td>
+    `;
+
+    const statusTd = tr.children[7];
+    const statusSelect = document.createElement('select');
+    statusSelect.className = 'status-select';
+    STATUS_OPTIONS.forEach(opt => {
+      const optionEl = document.createElement('option');
+      optionEl.value = opt;
+      optionEl.textContent = opt;
+      if (opt === row['ステータス']) optionEl.selected = true;
+      statusSelect.appendChild(optionEl);
+    });
+    statusSelect.addEventListener('change', async () => {
+      statusSelect.disabled = true;
+      try {
+        const result = await callApi('updateStatus', { id: row['ID'], status: statusSelect.value });
+        if (!result.success) {
+          alert('更新に失敗しました: ' + (result.message || '不明なエラー'));
+        }
+      } catch (err) {
+        alert('通信エラーが発生しました');
+      } finally {
+        statusSelect.disabled = false;
+      }
+    });
+    statusTd.appendChild(statusSelect);
+
+    const actionTd = tr.children[8];
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'cancel-btn';
+    cancelBtn.textContent = 'キャンセル';
+    cancelBtn.addEventListener('click', async () => {
+      if (!confirm('この予約をキャンセルしますか？')) return;
+      cancelBtn.disabled = true;
+      try {
+        const result = await callApi('cancel', { id: row['ID'] });
+        if (result.success) {
+          loadReservations();
+        } else {
+          alert('キャンセルに失敗しました: ' + (result.message || '不明なエラー'));
+          cancelBtn.disabled = false;
+        }
+      } catch (err) {
+        alert('通信エラーが発生しました');
+        cancelBtn.disabled = false;
+      }
+    });
+    actionTd.appendChild(cancelBtn);
+
+    tbody.appendChild(tr);
+  });
+}
+
+function escapeHtml(str) {
+  if (str === undefined || str === null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return String(value);
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+}
+</script>
+</body>
+</html>
