@@ -77,6 +77,12 @@
     font-size: 13px;
   }
   .empty { color: #888; margin-top: 16px; }
+  .note {
+    font-weight: normal;
+    color: #b3261e;
+    font-size: 12px;
+    margin-left: 6px;
+  }
 </style>
 </head>
 <body>
@@ -140,10 +146,10 @@ function renderCustomerForm() {
         <label for="phone">電話番号</label>
         <input type="tel" id="phone" required>
 
-        <label for="email">メールアドレス</label>
+        <label for="email">メールアドレス<span class="note">※携帯電話のメールアドレスのみ</span></label>
         <input type="email" id="email" required>
 
-        <label for="date">希望日</label>
+        <label for="date">希望日<span class="note">※時間の予約はできません</span></label>
         <input type="date" id="date" required>
 
         <label for="menu">メニュー</label>
@@ -182,7 +188,7 @@ function renderCustomerForm() {
       if (result.success) {
         form.reset();
         form.style.display = 'none';
-        messageEl.innerHTML = '<div class="message success">予約を受け付けました</div>';
+        messageEl.innerHTML = '<div class="message success">予約を受け付けました<br>1～2日以内にご予約受付完了のメールを送らせていただきます。</div>';
       } else {
         messageEl.innerHTML = `<div class="message error">予約に失敗しました: ${result.message || '不明なエラー'}</div>`;
         submitBtn.disabled = false;
