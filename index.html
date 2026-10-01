@@ -314,7 +314,11 @@ function initFuriganaAutofill() {
   });
 
   nameInput.addEventListener('compositionupdate', (e) => {
-    composingReading = e.data || '';
+    const data = e.data || '';
+    // ひらがなのみの状態の時だけ記録する（漢字に変換された候補は無視する）
+    if (/^[ぁ-んー]*$/.test(data)) {
+      composingReading = data;
+    }
   });
 
   nameInput.addEventListener('compositionend', () => {
