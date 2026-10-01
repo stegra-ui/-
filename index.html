@@ -83,6 +83,72 @@
     font-size: 12px;
     margin-left: 6px;
   }
+
+  /* 希望日カレンダー */
+  .date-field-wrapper { position: relative; }
+  #dateDisplay { background: #fff; cursor: pointer; }
+  .calendar-popup {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 280px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    padding: 12px;
+    z-index: 10;
+  }
+  .calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .calendar-nav-btn {
+    width: auto;
+    margin-top: 0;
+    padding: 4px 10px;
+    font-size: 14px;
+    background: #eee;
+    color: #333;
+  }
+  .calendar-nav-btn:disabled { opacity: 0.3; background: #eee; }
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    text-align: center;
+    font-size: 12px;
+  }
+  .calendar-weekday { color: #888; padding: 4px 0; }
+  .calendar-day {
+    padding: 6px 0;
+    border-radius: 4px;
+    cursor: pointer;
+    background: #f5f6f8;
+  }
+  .calendar-day:hover { background: #d9e8fb; }
+  .calendar-day.disabled {
+    color: #ccc;
+    background: transparent;
+    cursor: default;
+  }
+  .calendar-day.selected { background: #2b6cb0; color: #fff; }
+  .calendar-day.empty { background: transparent; cursor: default; }
+  .calendar-footer {
+    margin-top: 10px;
+    text-align: right;
+  }
+  .calendar-clear-btn {
+    width: auto;
+    margin-top: 0;
+    padding: 5px 10px;
+    font-size: 12px;
+    background: #999;
+  }
 </style>
 </head>
 <body>
@@ -93,6 +159,12 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbwoZEuRFkbz8A6g9gID_NUT
 
 const MENUS = ['制服一式', '上着のみ', 'ズボン・スカートのみ', 'その他'];
 const STATUS_OPTIONS = ['予約中', '対応済み', 'キャンセル'];
+// 年末年始休業期間（この期間は希望日として選択できない）
+const CLOSED_START = '2026-12-30';
+const CLOSED_END = '2027-01-05';
+// カレンダーに表示する日付の範囲
+const DATE_MIN = '2026-11-29';
+const DATE_MAX = '2027-01-31';
 
 const params = new URLSearchParams(location.search);
 const isAdmin = params.get('admin') === 'true';
@@ -152,8 +224,12 @@ function renderCustomerForm() {
         <label for="email">メールアドレス<span class="note">※携帯電話のメールアドレスのみ</span></label>
         <input type="email" id="email" required>
 
-        <label for="date">希望日<span class="note">※時間の予約はできません／希望日なしでも予約可</span></label>
-        <input type="date" id="date">
+        <label for="dateDisplay">希望日<span class="note">※時間の予約はできません／希望日なしでも予約可／8・18・28日は16時~19時営業</span></label>
+        <div class="date-field-wrapper">
+          <input type="text" id="dateDisplay" readonly placeholder="選択してください（任意）">
+          <input type="hidden" id="date">
+          <div class="calendar-popup" id="calendarPopup" style="display:none;"></div>
+        </div>
 
         <label for="menu">メニュー</label>
         <select id="menu" required>
@@ -168,6 +244,7 @@ function renderCustomerForm() {
   `;
 
   const form = document.getElementById('reservationForm');
+  initCustomCalendar();
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const submitBtn = document.getElementById('submitBtn');
@@ -187,6 +264,13 @@ function renderCustomerForm() {
       menu: document.getElementById('menu').value
     };
 
+    if (data.date && data.date >= CLOSED_START && data.date <= CLOSED_END) {
+      messageEl.innerHTML = '<div class="message error">誠に申し訳ございませんが、12/30～1/5は年末年始休業のため、その期間を希望日として選択することはできません。別の日付をご指定ください。</div>';
+      submitBtn.disabled = false;
+      submitBtn.textContent = '予約する';
+      return;
+    }
+
     try {
       const result = await callApi('create', data);
       if (result.success) {
@@ -203,6 +287,130 @@ function renderCustomerForm() {
       submitBtn.disabled = false;
       submitBtn.textContent = '予約する';
     }
+  });
+}
+
+// ===== 希望日用の自作カレンダー =====
+// ネイティブのinput type="date"では範囲の途中だけを選択不可にできないため、
+// 自作のカレンダーポップアップで休業期間をグレーアウトして選択できないようにする
+let calendarViewYear;
+let calendarViewMonth; // 0-11
+let calendarSelectedDate = null; // 'YYYY-MM-DD' または null
+
+function parseDateStr(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return { y, m: m - 1, d };
+}
+
+function toDateStr(y, m, d) {
+  const mm = String(m + 1).padStart(2, '0');
+  const dd = String(d).padStart(2, '0');
+  return `${y}-${mm}-${dd}`;
+}
+
+function isDateDisabled(dateStr) {
+  if (dateStr < DATE_MIN || dateStr > DATE_MAX) return true;
+  if (dateStr >= CLOSED_START && dateStr <= CLOSED_END) return true;
+  return false;
+}
+
+function initCustomCalendar() {
+  const min = parseDateStr(DATE_MIN);
+  calendarViewYear = min.y;
+  calendarViewMonth = min.m;
+  calendarSelectedDate = null;
+
+  const dateDisplay = document.getElementById('dateDisplay');
+  const popup = document.getElementById('calendarPopup');
+
+  dateDisplay.addEventListener('click', () => {
+    popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
+    renderCalendar();
+  });
+
+  document.addEventListener('click', (e) => {
+    const wrapper = document.querySelector('.date-field-wrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+      popup.style.display = 'none';
+    }
+  });
+
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const popup = document.getElementById('calendarPopup');
+  const max = parseDateStr(DATE_MAX);
+  const min = parseDateStr(DATE_MIN);
+
+  const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const weekdays = ['日','月','火','水','木','金','土'];
+
+  const firstDayOfMonth = new Date(calendarViewYear, calendarViewMonth, 1).getDay();
+  const daysInMonth = new Date(calendarViewYear, calendarViewMonth + 1, 0).getDate();
+
+  const isPrevDisabled = calendarViewYear === min.y && calendarViewMonth === min.m;
+  const isNextDisabled = calendarViewYear === max.y && calendarViewMonth === max.m;
+
+  let cellsHtml = '';
+  weekdays.forEach(w => {
+    cellsHtml += `<div class="calendar-weekday">${w}</div>`;
+  });
+  for (let i = 0; i < firstDayOfMonth; i++) {
+    cellsHtml += '<div class="calendar-day empty"></div>';
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = toDateStr(calendarViewYear, calendarViewMonth, d);
+    const disabled = isDateDisabled(dateStr);
+    const selected = dateStr === calendarSelectedDate;
+    cellsHtml += `<div class="calendar-day${disabled ? ' disabled' : ''}${selected ? ' selected' : ''}" data-date="${dateStr}">${d}</div>`;
+  }
+
+  popup.innerHTML = `
+    <div class="calendar-header">
+      <button type="button" class="calendar-nav-btn" id="calPrevBtn" ${isPrevDisabled ? 'disabled' : ''}>&lt;</button>
+      <span>${calendarViewYear}年 ${monthNames[calendarViewMonth]}</span>
+      <button type="button" class="calendar-nav-btn" id="calNextBtn" ${isNextDisabled ? 'disabled' : ''}>&gt;</button>
+    </div>
+    <div class="calendar-grid">${cellsHtml}</div>
+    <div class="calendar-footer">
+      <button type="button" class="calendar-clear-btn" id="calClearBtn">選択なし</button>
+    </div>
+  `;
+
+  const prevBtn = document.getElementById('calPrevBtn');
+  const nextBtn = document.getElementById('calNextBtn');
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      calendarViewMonth--;
+      if (calendarViewMonth < 0) { calendarViewMonth = 11; calendarViewYear--; }
+      renderCalendar();
+    });
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      calendarViewMonth++;
+      if (calendarViewMonth > 11) { calendarViewMonth = 0; calendarViewYear++; }
+      renderCalendar();
+    });
+  }
+
+  popup.querySelectorAll('.calendar-day[data-date]').forEach(cell => {
+    if (cell.classList.contains('disabled')) return;
+    cell.addEventListener('click', () => {
+      const dateStr = cell.getAttribute('data-date');
+      calendarSelectedDate = dateStr;
+      document.getElementById('date').value = dateStr;
+      document.getElementById('dateDisplay').value = dateStr;
+      popup.style.display = 'none';
+    });
+  });
+
+  document.getElementById('calClearBtn').addEventListener('click', () => {
+    calendarSelectedDate = null;
+    document.getElementById('date').value = '';
+    document.getElementById('dateDisplay').value = '';
+    popup.style.display = 'none';
   });
 }
 
