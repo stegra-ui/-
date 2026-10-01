@@ -222,7 +222,7 @@ function renderCustomerForm() {
         <label for="school">学校名</label>
         <input type="text" id="school" required>
 
-        <label for="phone">電話番号</label>
+        <label for="phone">携帯電話番号</label>
         <input type="tel" id="phone" required>
 
         <label for="address">住所<span class="note">※市内の方は木更津市は不要</span></label>
@@ -499,7 +499,7 @@ function renderTable(rows) {
           <th>ふりがな</th>
           <th>性別</th>
           <th>学校名</th>
-          <th>電話番号</th>
+          <th>携帯電話番号</th>
           <th>住所</th>
           <th>メールアドレス</th>
           <th>希望日</th>
@@ -520,7 +520,7 @@ function renderTable(rows) {
       <td>${escapeHtml(row['ふりがな'])}</td>
       <td>${escapeHtml(row['性別'])}</td>
       <td>${escapeHtml(row['学校名'])}</td>
-      <td>${escapeHtml(row['電話番号'])}</td>
+      <td>${escapeHtml(row['携帯電話番号'])}</td>
       <td>${escapeHtml(row['住所'])}</td>
       <td>${escapeHtml(row['メールアドレス'])}</td>
       <td>${escapeHtml(formatDate(row['希望日']))}</td>
