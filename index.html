@@ -324,7 +324,8 @@ function initCustomCalendar() {
   const dateDisplay = document.getElementById('dateDisplay');
   const popup = document.getElementById('calendarPopup');
 
-  dateDisplay.addEventListener('click', () => {
+  dateDisplay.addEventListener('click', (e) => {
+    e.stopPropagation();
     popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
     renderCalendar();
   });
@@ -382,14 +383,16 @@ function renderCalendar() {
   const prevBtn = document.getElementById('calPrevBtn');
   const nextBtn = document.getElementById('calNextBtn');
   if (prevBtn) {
-    prevBtn.addEventListener('click', () => {
+    prevBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       calendarViewMonth--;
       if (calendarViewMonth < 0) { calendarViewMonth = 11; calendarViewYear--; }
       renderCalendar();
     });
   }
   if (nextBtn) {
-    nextBtn.addEventListener('click', () => {
+    nextBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       calendarViewMonth++;
       if (calendarViewMonth > 11) { calendarViewMonth = 0; calendarViewYear++; }
       renderCalendar();
@@ -398,7 +401,8 @@ function renderCalendar() {
 
   popup.querySelectorAll('.calendar-day[data-date]').forEach(cell => {
     if (cell.classList.contains('disabled')) return;
-    cell.addEventListener('click', () => {
+    cell.addEventListener('click', (e) => {
+      e.stopPropagation();
       const dateStr = cell.getAttribute('data-date');
       calendarSelectedDate = dateStr;
       document.getElementById('date').value = dateStr;
@@ -407,7 +411,8 @@ function renderCalendar() {
     });
   });
 
-  document.getElementById('calClearBtn').addEventListener('click', () => {
+  document.getElementById('calClearBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
     calendarSelectedDate = null;
     document.getElementById('date').value = '';
     document.getElementById('dateDisplay').value = '';
