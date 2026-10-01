@@ -166,6 +166,11 @@ const CLOSED_END = '2027-01-05';
 const DATE_MIN = '2026-11-29';
 const DATE_MAX = '2027-01-31';
 
+// 希望日カレンダーの状態
+let calendarViewYear;
+let calendarViewMonth; // 0-11
+let calendarSelectedDate = null; // 'YYYY-MM-DD' または null
+
 const params = new URLSearchParams(location.search);
 const isAdmin = params.get('admin') === 'true';
 
@@ -293,10 +298,6 @@ function renderCustomerForm() {
 // ===== 希望日用の自作カレンダー =====
 // ネイティブのinput type="date"では範囲の途中だけを選択不可にできないため、
 // 自作のカレンダーポップアップで休業期間をグレーアウトして選択できないようにする
-let calendarViewYear;
-let calendarViewMonth; // 0-11
-let calendarSelectedDate = null; // 'YYYY-MM-DD' または null
-
 function parseDateStr(str) {
   const [y, m, d] = str.split('-').map(Number);
   return { y, m: m - 1, d };
