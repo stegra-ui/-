@@ -206,15 +206,17 @@ function renderCustomerForm() {
     <div class="container">
       <h1>制服 ご予約フォーム</h1>
       <form id="reservationForm">
-        <label for="name">お名前</label>
+        <label for="name">お子様のお名前</label>
         <input type="text" id="name" required>
+
+        <label for="furigana">ふりがな</label>
+        <input type="text" id="furigana">
 
         <label for="gender">性別</label>
         <select id="gender" required>
           <option value="">選択してください</option>
           <option value="男性">男性</option>
           <option value="女性">女性</option>
-          <option value="その他">その他</option>
         </select>
 
         <label for="school">学校名</label>
@@ -223,7 +225,7 @@ function renderCustomerForm() {
         <label for="phone">電話番号</label>
         <input type="tel" id="phone" required>
 
-        <label for="address">住所</label>
+        <label for="address">住所<span class="note">※市内の方は木更津市は不要</span></label>
         <input type="text" id="address" required>
 
         <label for="email">メールアドレス<span class="note">※携帯電話のメールアドレスのみ</span></label>
@@ -250,6 +252,7 @@ function renderCustomerForm() {
 
   const form = document.getElementById('reservationForm');
   initCustomCalendar();
+  initFuriganaAutofill();
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const submitBtn = document.getElementById('submitBtn');
@@ -260,6 +263,7 @@ function renderCustomerForm() {
 
     const data = {
       name: document.getElementById('name').value,
+      furigana: document.getElementById('furigana').value,
       gender: document.getElementById('gender').value,
       school: document.getElementById('school').value,
       phone: document.getElementById('phone').value,
@@ -291,6 +295,31 @@ function renderCustomerForm() {
       messageEl.innerHTML = '<div class="message error">通信エラーが発生しました。時間をおいて再度お試しください。</div>';
       submitBtn.disabled = false;
       submitBtn.textContent = '予約する';
+    }
+  });
+}
+
+// ===== ふりがな半自動入力 =====
+// お子様のお名前欄にIMEで入力している最中のひらがな（変換前の読み）を
+// 拾ってふりがな欄に自動で入れる。完全に正確ではないため、
+// ふりがな欄は手動でも修正できるようにしておく。
+function initFuriganaAutofill() {
+  const nameInput = document.getElementById('name');
+  const furiganaInput = document.getElementById('furigana');
+  let composingReading = '';
+  let furiganaEditedManually = false;
+
+  furiganaInput.addEventListener('input', () => {
+    furiganaEditedManually = true;
+  });
+
+  nameInput.addEventListener('compositionupdate', (e) => {
+    composingReading = e.data || '';
+  });
+
+  nameInput.addEventListener('compositionend', () => {
+    if (!furiganaEditedManually && composingReading) {
+      furiganaInput.value = (furiganaInput.value + composingReading).slice(-50);
     }
   });
 }
@@ -463,6 +492,7 @@ function renderTable(rows) {
       <thead>
         <tr>
           <th>名前</th>
+          <th>ふりがな</th>
           <th>性別</th>
           <th>学校名</th>
           <th>電話番号</th>
@@ -483,6 +513,7 @@ function renderTable(rows) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${escapeHtml(row['名前'])}</td>
+      <td>${escapeHtml(row['ふりがな'])}</td>
       <td>${escapeHtml(row['性別'])}</td>
       <td>${escapeHtml(row['学校名'])}</td>
       <td>${escapeHtml(row['電話番号'])}</td>
@@ -494,7 +525,7 @@ function renderTable(rows) {
       <td></td>
     `;
 
-    const statusTd = tr.children[8];
+    const statusTd = tr.children[9];
     const statusSelect = document.createElement('select');
     statusSelect.className = 'status-select';
     STATUS_OPTIONS.forEach(opt => {
@@ -519,7 +550,7 @@ function renderTable(rows) {
     });
     statusTd.appendChild(statusSelect);
 
-    const actionTd = tr.children[9];
+    const actionTd = tr.children[10];
     const cancelBtn = document.createElement('button');
     cancelBtn.className = 'cancel-btn';
     cancelBtn.textContent = 'キャンセル';
