@@ -159,6 +159,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbwoZEuRFkbz8A6g9gID_NUT
 
 const MENUS = ['制服一式', '上着のみ', 'ズボン・スカートのみ', 'その他'];
 const STATUS_OPTIONS = ['予約中', '対応済み', 'キャンセル'];
+const SCHOOLS = ['木二中', '太田中', '波岡中', '畑沢中', '金田中', '岩根中', '鎌足中'];
 // 年末年始休業期間（この期間は希望日として選択できない）
 const CLOSED_START = '2026-12-30';
 const CLOSED_END = '2027-01-05';
@@ -220,7 +221,10 @@ function renderCustomerForm() {
         </select>
 
         <label for="school">学校名</label>
-        <input type="text" id="school" required>
+        <select id="school" required>
+          <option value="">選択してください</option>
+          ${SCHOOLS.map(s => `<option value="${s}">${s}</option>`).join('')}
+        </select>
 
         <label for="phone">携帯電話番号</label>
         <input type="tel" id="phone" required>
