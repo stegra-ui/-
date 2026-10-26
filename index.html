@@ -83,6 +83,7 @@
     font-size: 12px;
     margin-left: 6px;
   }
+  .graduation-note { margin: 6px 0 0 0; }
 
   /* 希望日カレンダー */
   .date-field-wrapper { position: relative; }
@@ -229,11 +230,16 @@ function renderCustomerForm() {
         <label for="phone">携帯電話番号</label>
         <input type="tel" id="phone" required>
 
-        <label for="address">住所<span class="note">※市内の方は木更津市は不要</span></label>
-        <input type="text" id="address" required>
-
         <label for="email">メールアドレス<span class="note">※携帯電話のメールアドレスのみ</span></label>
         <input type="email" id="email" required>
+
+        <label for="graduation">卒業式での制服使用について</label>
+        <select id="graduation" required>
+          <option value="">選択してください</option>
+          <option value="使う">使う</option>
+          <option value="使わない">使わない</option>
+        </select>
+        <div class="note graduation-note">「使う」を選んだ方は採寸期間が異なります。チラシの★マークの期日までに必ずご来店ください。</div>
 
         <label for="dateDisplay">希望日<span class="note">※時間の予約はできません／希望日なしでも予約可／8・18・28日は16時~19時営業</span></label>
         <div class="date-field-wrapper">
@@ -271,8 +277,8 @@ function renderCustomerForm() {
       gender: document.getElementById('gender').value,
       school: document.getElementById('school').value,
       phone: document.getElementById('phone').value,
-      address: document.getElementById('address').value,
       email: document.getElementById('email').value,
+      graduation: document.getElementById('graduation').value,
       date: document.getElementById('date').value,
       menu: document.getElementById('menu').value
     };
@@ -504,8 +510,8 @@ function renderTable(rows) {
           <th>性別</th>
           <th>学校名</th>
           <th>携帯電話番号</th>
-          <th>住所</th>
           <th>メールアドレス</th>
+          <th>卒業式での制服使用</th>
           <th>希望日</th>
           <th>メニュー</th>
           <th>ステータス</th>
@@ -525,8 +531,8 @@ function renderTable(rows) {
       <td>${escapeHtml(row['性別'])}</td>
       <td>${escapeHtml(row['学校名'])}</td>
       <td>${escapeHtml(row['携帯電話番号'])}</td>
-      <td>${escapeHtml(row['住所'])}</td>
       <td>${escapeHtml(row['メールアドレス'])}</td>
+      <td>${escapeHtml(row['卒業式での制服使用'])}</td>
       <td>${escapeHtml(formatDate(row['希望日']))}</td>
       <td>${escapeHtml(row['メニュー'])}</td>
       <td></td>
