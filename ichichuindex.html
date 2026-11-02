@@ -93,7 +93,7 @@
 
 <script>
 // ★この申し込みフォーム用に新しくデプロイしたGASのURLに差し替えてください
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyMpkasMH_9KWjj1JcCumZ5KmFETjO4BIJS4zl21YIqH1f0GHr_azbhli8D4RZCgs6WQg/exec';
+const GAS_URL = 'ここに新しいGASのウェブアプリURLを貼り付け';
 
 const SHOE_PRICE = 4070;   // 指定上靴（税込）
 const BAG_PRICE = 9600;    // 指定カバン（税込）
@@ -211,7 +211,7 @@ function renderCustomerForm() {
               ${lines.join('')}
               <div class="total">合計金額（${kind}）：${yen(data.total)}（税込）</div>
             </div>
-            <div class="red-text">上靴のみは4,070円、カバンのみは9,600円、どちらも購入は13,670円。全て税込。<br>納品は2月末から3月頭を予定しております。ご用意できしだいメールにてご連絡いたします。</div>
+            <div class="red-text">納品は2月末から3月頭を予定しております。ご用意できしだいメールにてご連絡いたします。</div>
             <br>【メール受信に関するご注意】<br>当店からの確認メールが届かない場合がございます。icloud.comからのメールを受信できるよう、ドメイン指定受信を設定してください。
           </div>`;
       } else {
