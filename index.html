@@ -85,6 +85,11 @@
   }
   .graduation-note { margin: 6px 0 0 0; }
 
+  /* 管理ページの絞り込み */
+  .filter-bar { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .filter-bar label { margin: 0; white-space: nowrap; }
+  .school-filter { width: auto; min-width: 160px; }
+
   /* 希望日カレンダー */
   .date-field-wrapper { position: relative; }
   #dateDisplay { background: #fff; cursor: pointer; }
@@ -156,7 +161,7 @@
 <div id="app"></div>
 
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbz3cGy1BjinlNbgKuyNYOfgtkljwETGmaJAJv6VnsZ0yoM4MUkE0EZlggwis61o_qOAPw/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwoZEuRFkbz8A6g9gID_NUTayRNsARMBvjoknTRw1XYyMyn_b7Nz9Qpxg2N_h9_jHRQ8g/exec';
 
 const MENUS = ['制服一式', '上着のみ', 'ズボン・スカートのみ', 'その他'];
 const STATUS_OPTIONS = ['予約中', '対応済み', 'キャンセル'];
@@ -172,6 +177,9 @@ const DATE_MAX = '2027-01-31';
 let calendarViewYear;
 let calendarViewMonth; // 0-11
 let calendarSelectedDate = null; // 'YYYY-MM-DD' または null
+
+// 管理ページで読み込んだ予約の全件（学校での絞り込みに使う）
+let allReservations = [];
 
 const params = new URLSearchParams(location.search);
 const isAdmin = params.get('admin') === 'true';
@@ -472,11 +480,28 @@ function renderAdminPage() {
         <h1>予約管理</h1>
         <button class="reload-btn" id="reloadBtn">再読み込み</button>
       </div>
+      <div class="filter-bar">
+        <label for="schoolFilter">学校で絞り込み</label>
+        <select id="schoolFilter" class="school-filter">
+          <option value="">すべての学校</option>
+          ${SCHOOLS.map(s => `<option value="${s}">${s}</option>`).join('')}
+        </select>
+      </div>
       <div id="adminBody">読み込み中...</div>
     </div>
   `;
   document.getElementById('reloadBtn').addEventListener('click', loadReservations);
+  document.getElementById('schoolFilter').addEventListener('change', applySchoolFilter);
   loadReservations();
+}
+
+// 選ばれた学校の予約だけを表示する（「すべての学校」なら全件）
+function applySchoolFilter() {
+  const school = document.getElementById('schoolFilter').value;
+  const rows = school
+    ? allReservations.filter(row => row['学校名'] === school)
+    : allReservations;
+  renderTable(rows);
 }
 
 async function loadReservations() {
@@ -488,7 +513,8 @@ async function loadReservations() {
       adminBody.innerHTML = `<div class="message error">読み込みに失敗しました: ${result.message || '不明なエラー'}</div>`;
       return;
     }
-    renderTable(result.data);
+    allReservations = result.data || [];
+    applySchoolFilter();
   } catch (err) {
     adminBody.innerHTML = '<div class="message error">通信エラーが発生しました。</div>';
   }
@@ -497,7 +523,7 @@ async function loadReservations() {
 function renderTable(rows) {
   const adminBody = document.getElementById('adminBody');
   if (!rows || rows.length === 0) {
-    adminBody.innerHTML = '<p class="empty">予約はまだありません</p>';
+    adminBody.innerHTML = '<p class="empty">該当する予約はありません</p>';
     return;
   }
 
@@ -553,7 +579,9 @@ function renderTable(rows) {
       statusSelect.disabled = true;
       try {
         const result = await callApi('updateStatus', { id: row['ID'], status: statusSelect.value });
-        if (!result.success) {
+        if (result.success) {
+          row['ステータス'] = statusSelect.value;
+        } else {
           alert('更新に失敗しました: ' + (result.message || '不明なエラー'));
         }
       } catch (err) {
