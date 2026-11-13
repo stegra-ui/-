@@ -85,6 +85,19 @@
   }
   .graduation-note { margin: 6px 0 0 0; }
 
+  /* 予約完了画面のご予約日の表示 */
+  .reservation-date-box {
+    margin-top: 16px;
+    padding: 16px;
+    border: 2px solid #2b6cb0;
+    border-radius: 6px;
+    background: #f0f6ff;
+    text-align: center;
+  }
+  .reservation-date-label { font-size: 13px; color: #555; }
+  .reservation-date-value { font-size: 22px; font-weight: bold; margin: 6px 0 10px; color: #1a4a80; }
+  .reservation-date-note { font-size: 13px; font-weight: bold; color: #b3261e; }
+
   /* 管理ページの絞り込み */
   .filter-bar { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
   .filter-bar label { margin: 0; white-space: nowrap; }
@@ -303,7 +316,7 @@ function renderCustomerForm() {
       if (result.success) {
         form.reset();
         form.style.display = 'none';
-        messageEl.innerHTML = '<div class="message success">予約を受け付けました<br>1～2日以内に、以下のアドレスからご予約受付完了のメールを送らせていただきます。<br>mizunowear@gmail.com<br><br>【メール受信に関するご注意】<br>当店からの確認メールが届かない場合がございます。gmail.comからのメールを受信できるよう、ドメイン指定受信を設定してください。</div>';
+        messageEl.innerHTML = buildCompletionHtml(data.date);
       } else {
         messageEl.innerHTML = `<div class="message error">予約に失敗しました: ${result.message || '不明なエラー'}</div>`;
         submitBtn.disabled = false;
@@ -315,6 +328,34 @@ function renderCustomerForm() {
       submitBtn.textContent = '予約する';
     }
   });
+}
+
+// ===== 予約完了画面の表示内容 =====
+// お客様が選んだご予約日（希望日）を大きく表示し、スクリーンショットの保存をお勧めする
+function buildCompletionHtml(dateStr) {
+  let dateText = '日付の指定なし';
+  if (dateStr) {
+    const { y, m, d } = parseDateStr(dateStr);
+    const weekday = ['日', '月', '火', '水', '木', '金', '土'][new Date(y, m, d).getDay()];
+    dateText = `${y}年${m + 1}月${d}日（${weekday}）`;
+  }
+
+  return `
+    <div class="message success">
+      予約を受け付けました<br>
+      1～2日以内に、以下のアドレスからご予約受付完了のメールを送らせていただきます。<br>
+      mizunowear@gmail.com
+    </div>
+    <div class="reservation-date-box">
+      <div class="reservation-date-label">お客様のご予約日</div>
+      <div class="reservation-date-value">${dateText}</div>
+      <div class="reservation-date-note">※ご予約日を忘れないよう、画面のスクリーンショットの保存をお勧めいたします。</div>
+    </div>
+    <div class="message success">
+      【メール受信に関するご注意】<br>
+      当店からの確認メールが届かない場合がございます。gmail.comからのメールを受信できるよう、ドメイン指定受信を設定してください。
+    </div>
+  `;
 }
 
 // ===== ふりがな半自動入力 =====
