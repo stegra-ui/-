@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>こどもしょうぎ</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff0f6;--card:#fff;--ink:#6b3a5b;--pink:#ff8fb8;--pink2:#ffd1e3;--lav:#c9b8ff;--board:#ffe9b8;--line:#e0b97a;--hint:#5fd9b0;--sel:#ffd54a;--red:#e0457b;--pm:#ffe0ee;--pe:#e6deff;--pt:#5a3a2a;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2b1a28;--card:#3a2536;--ink:#ffe3f0;--board:#7a6552;--line:#b09370;--pink2:#5a3550}}
+:root[data-theme="dark"]{--bg:#2b1a28;--card:#3a2536;--ink:#ffe3f0;--board:#7a6552;--line:#b09370;--pink2:#5a3550}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Zen Maru Gothic','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif;-webkit-tap-highlight-color:transparent}
+body{display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:10px 8px 16px;box-sizing:border-box}
+h1{margin:4px 0;font-size:clamp(22px,5vw,32px);color:var(--red)}
+.card{background:var(--card);border-radius:24px;padding:18px;box-shadow:0 6px 0 var(--pink2);max-width:460px;width:100%;box-sizing:border-box;text-align:center}
+.card h3{margin:14px 0 6px;font-size:17px}
+.row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+button{font:inherit;font-weight:900;color:#fff;background:var(--pink);border:0;border-radius:18px;padding:12px 16px;font-size:17px;box-shadow:0 4px 0 #e0689a;cursor:pointer}
+button:active{transform:translateY(3px);box-shadow:0 1px 0 #e0689a}
+button.opt{background:var(--pink2);color:var(--ink);box-shadow:0 4px 0 var(--lav)}
+button.opt.on{background:var(--lav);outline:4px solid var(--pink)}
+button.go{font-size:24px;padding:14px 34px;margin-top:16px;background:#ff6fa5}
+button.sm{font-size:15px;padding:9px 13px;background:var(--lav);box-shadow:0 4px 0 #a593e6}
+.rule{font-size:13px;opacity:.85;line-height:1.6;margin-top:12px}
+#game{display:none;flex-direction:column;align-items:center;width:100%;gap:8px}
+#msg{min-height:3.2em;font-weight:900;font-size:clamp(15px,3.6vw,19px);background:var(--card);border-radius:18px;padding:8px 14px;width:min(94vw,64vh,560px);box-sizing:border-box;text-align:center;display:flex;align-items:center;justify-content:center}
+#board{container-type:inline-size;display:grid;grid-template-columns:repeat(9,1fr);width:min(94vw,64vh,560px);aspect-ratio:1;background:var(--board);border-radius:14px;padding:6px;box-sizing:border-box;box-shadow:0 6px 0 var(--line)}
+.c{position:relative;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;min-width:0}
+.c.last{background:#fff3b0aa}.c.sel{background:var(--sel)}
+.c.t::after{content:"";position:absolute;width:46%;height:46%;border-radius:50%;background:var(--hint);box-shadow:0 0 12px 5px var(--hint);animation:p 1s infinite;pointer-events:none}
+.c.t.cp::after{background:#ff7aa8;box-shadow:0 0 12px 5px #ff7aa8;width:80%;height:80%;opacity:.55}
+.c.hint{background:#b6f0dc;box-shadow:inset 0 0 0 3px var(--hint)}
+@keyframes p{50%{transform:scale(1.25);opacity:.7}}
+.pc{width:88%;height:88%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:5.4cqw;color:var(--pt);background:var(--pm);border-radius:38% 38% 18% 18%/22% 22% 12% 12%;box-shadow:0 2px 0 #d9a45c;position:relative;z-index:1}
+.pc.e{background:var(--pe);transform:rotate(180deg)}
+.pc.pr{color:var(--red)}
+#end{position:fixed;inset:0;background:#0006;display:none;align-items:center;justify-content:center;z-index:9;padding:16px}
+#end .card{animation:b .6s}
+#end .big{font-size:64px}
+#zk{position:fixed;inset:0;background:var(--bg);overflow-y:auto;display:none;z-index:10;padding:calc(12px + env(safe-area-inset-top,0px)) 12px calc(20px + env(safe-area-inset-bottom,0px));box-sizing:border-box}
+#zk h2{text-align:center;color:var(--red);margin:4px 0 2px}
+#zk .sub{text-align:center;font-size:14px;margin-bottom:10px}
+#zl{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;max-width:960px;margin:12px auto}
+.zc{background:var(--card);border-radius:22px;padding:14px;box-shadow:0 5px 0 var(--pink2);text-align:center}
+.zh{font-size:20px;font-weight:900;color:var(--red)}.ze{font-size:34px;vertical-align:middle;margin-right:4px}
+.zc p{margin:6px 0 8px;font-size:14px;line-height:1.5}
+.zr{display:flex;align-items:center;justify-content:center;gap:6px}
+.zr small{display:block;font-weight:700;margin:2px 0}
+.za{font-weight:900;font-size:15px;color:var(--pink);min-width:40px}
+.zp{width:46px;height:46px;font-size:26px;margin:0 auto}
+.mg{display:grid;grid-template-columns:repeat(9,1fr);width:128px;aspect-ratio:1;margin:4px auto;background:var(--board);border-radius:8px;padding:2px;box-sizing:border-box}
+.mg i{border:1px solid var(--line);font-style:normal;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--pt)}
+.mg i.mo{background:var(--hint)}.mg i.me{background:var(--pm)}
+@keyframes b{0%{transform:scale(.3)}70%{transform:scale(1.08)}}
+</style></head><body>
+<h1>🌸 こども しょうぎ 🌸</h1>
+<div id="menu" class="card">
+  <h3>あそびかた をえらぼう</h3>
+  <div class="row" id="modes">
+    <button class="opt on" data-v="train">🌟 トレーニング</button>
+    <button class="opt" data-v="play">⚔️ たいせん</button>
+  </div>
+  <div class="rule" id="modeDesc"></div>
+  <h3>あいての つよさ</h3>
+  <div class="row" id="levels">
+    <button class="opt on" data-v="1">🐣 やさしい</button>
+    <button class="opt" data-v="2">🐰 ふつう</button>
+    <button class="opt" data-v="3">🦁 つよい</button>
+  </div>
+  <button class="go" id="start">はじめる！</button>
+  <div><button class="sm" id="zkBtn" style="margin-top:14px">📖 こま ずかん</button></div>
+  <div class="rule">👑 あいての「玉」を さきに とったら かち！<br>🌸 ピンクが あなた（したがわ）。てきの じんちに はいると 赤い字に <b>パワーアップ</b>（なり）！<br>※ とった駒は つかえない かんたんルールだよ</div>
+</div>
+<div id="game">
+  <div id="msg"></div>
+  <div id="board"></div>
+  <div class="row" id="bar"></div>
+</div>
+<div id="zk"><h2>📖 こま ずかん 📖</h2><div class="sub">みどりの マスが うごける ところだよ！</div><div class="row"><button id="zkClose">✖ とじる</button></div><div id="zl"></div></div>
+<div id="end"><div class="card"><div class="big" id="eE"></div><h2 id="eT"></h2><div class="row" id="eB"></div></div></div>
+<script>
+const $=s=>document.querySelector(s);
+const KJ={p:'歩',l:'香',n:'桂',s:'銀',g:'金',b:'角',r:'飛',k:'王',P:'と',L:'杏',N:'圭',S:'全',B:'馬',R:'竜'};
+const V={p:1,l:3,n:3,s:5,g:6,b:8,r:10,P:6,L:6,N:6,S:6,B:11,R:13,k:1000};
+const EX={p:'歩（ふ）：まえに 1マス',l:'香（きょうしゃ）：まえに まっすぐ いくつでも！',n:'桂（けいま）：2マスまえの よこへ ジャンプ！',s:'銀（ぎん）：まえ3つと、うしろの ななめ',g:'金（きん）：まえ・よこ・うしろ に 1マス',b:'角（かく）：ななめに いくつでも！',r:'飛（ひしゃ）：たて・よこに いくつでも！',k:'王（おう）：ぐるっと 1マス。とられたら まけ！',P:'と：金と おなじ うごき',L:'成香：金と おなじ うごき',N:'成桂：金と おなじ うごき',S:'成銀：金と おなじ うごき',B:'馬（うま）：角 ＋ まわり1マス',R:'竜（りゅう）：飛車 ＋ ななめ1マス'};
+let mode='train',level=1,board,turn,sel,hist,over,last,hint,busy;
+const D8=[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]],DG=[[1,1],[1,-1],[-1,1],[-1,-1]],OR=[[1,0],[-1,0],[0,1],[0,-1]];
+function init(){const s='lnsgkgsnl',m=Array(81).fill('');
+ for(let x=0;x<9;x++){m[x]=s[x]+'1';m[18+x]='p1';m[54+x]='p0';m[72+x]=s[x]+'0'}
+ m[10]='r1';m[16]='b1';m[64]='b0';m[70]='r0';return m}
+function mv(b,i){const c=b[i];if(!c)return[];const t=c[0],s=+c[1],d=s?1:-1,x=i%9,y=i/9|0,o=[];
+ const st=(dx,dy)=>{const X=x+dx,Y=y+dy;if(X<0||X>8||Y<0||Y>8)return;const q=b[Y*9+X];if(q&&+q[1]===s)return;o.push(Y*9+X)};
+ const sl=(dx,dy)=>{for(let k=1;;k++){const X=x+dx*k,Y=y+dy*k;if(X<0||X>8||Y<0||Y>8)break;const q=b[Y*9+X];if(q&&+q[1]===s)break;o.push(Y*9+X);if(q)break}};
+ const G=[[-1,d],[0,d],[1,d],[-1,0],[1,0],[0,-d]];
+ if(t==='p')st(0,d);else if(t==='l')sl(0,d);else if(t==='n'){st(-1,2*d);st(1,2*d)}
+ else if(t==='s')[[-1,d],[0,d],[1,d],[-1,-d],[1,-d]].forEach(a=>st(...a));
+ else if('gPLNS'.includes(t))G.forEach(a=>st(...a));
+ else if(t==='k')D8.forEach(a=>st(...a));
+ else if(t==='b'||t==='B'){DG.forEach(a=>sl(...a));if(t==='B')OR.forEach(a=>st(...a))}
+ else{OR.forEach(a=>sl(...a));if(t==='R')DG.forEach(a=>st(...a))}
+ return o}
+const zone=(i,s)=>{const y=i/9|0;return s?y>=6:y<=2};
+function ap(b,f,t){const n=b.slice();let c=n[f];const s=+c[1];
+ if('plnsbr'.includes(c[0])&&(zone(f,s)||zone(t,s)))c=c[0].toUpperCase()+s;
+ n[t]=c;n[f]='';return n}
+function all(b,s){const r=[];for(let i=0;i<81;i++)if(b[i]&&+b[i][1]===s)for(const t of mv(b,i))r.push([i,t]);return r}
+function ev(b,s){let v=0;for(let i=0;i<81;i++){const c=b[i];if(c){const y=i/9|0,q=V[c[0]]*10+(+c[1]?y:8-y)*(c[0]==='p'?1:.3);v+=(+c[1]===s?q:-q)}}return v}
+function nm(b,s,dp,a,bt){if(!dp)return ev(b,s);const ms=all(b,s);if(!ms.length)return -1e5;
+ ms.sort((m,n)=>(b[n[1]]?V[b[n[1]][0]]:0)-(b[m[1]]?V[b[m[1]][0]]:0));let best=-1e9;
+ for(const[f,t]of ms){if(b[t]&&b[t][0]==='k')return 1e5+dp;const sc=-nm(ap(b,f,t),1-s,dp-1,-bt,-a);if(sc>best)best=sc;if(best>a)a=best;if(a>=bt)break}
+ return best}
+function pick(b,s,lv){const ms=all(b,s);if(!ms.length)return null;
+ const k=ms.find(m=>b[m[1]]&&b[m[1]][0]==='k');if(k)return k;
+ if(lv===1)return ms[Math.random()*ms.length|0];
+ const dp=lv===2?1:3,nz=lv===2?25:1;let best=null,bs=-1e9;
+ for(const m of ms){const sc=-nm(ap(b,m[0],m[1]),1-s,dp-1,-1e9,1e9)+Math.random()*nz;if(sc>bs){bs=sc;best=m}}
+ return best}
+function say(t){$('#msg').textContent=t}
+function render(){const B=$('#board');B.innerHTML='';
+ const tg=sel!=null?mv(board,sel):[];
+ for(let i=0;i<81;i++){const c=board[i],d=document.createElement('div');let k='c';
+  if(last&&(i===last[0]||i===last[1]))k+=' last';if(i===sel)k+=' sel';
+  if(mode==='train'&&tg.includes(i))k+=' t'+(c?' cp':'');
+  if(hint&&(i===hint[0]||i===hint[1]))k+=' hint';
+  d.className=k;
+  if(c){const t=c[0],s=+c[1],p=document.createElement('div');p.className='pc '+(s?'e':'m')+((t!=='k'&&t===t.toUpperCase())?' pr':'');p.textContent=(t==='k'&&s)?'玉':KJ[t];d.appendChild(p)}
+  d.onclick=()=>tap(i);B.appendChild(d)}}
+function tap(i){if(over||turn!==0||busy)return;hint=null;
+ if(sel!=null&&mv(board,sel).includes(i))return move(sel,i);
+ const c=board[i];
+ if(c&&c[1]==='0'){sel=i;say(mode==='train'?EX[c[0]]+' ／ ひかった ところへ いけるよ！':'どこへ うごかす？');}
+ else{sel=null;say('すきな 駒を タップしてね 👆')}
+ render()}
+function finish(win){over=true;render();
+ $('#eE').textContent=win?'🎉👑🎉':'🥺';
+ $('#eT').textContent=win?'すごい！ かったよ！':'ざんねん… もういっかい やってみよう！';
+ $('#eB').innerHTML='';
+ const mk=(t,f)=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>{$('#end').style.display='none';f()};$('#eB').appendChild(b)};
+ mk('🔁 もういっかい',newGame);
+ if(!win&&mode==='train')mk('↩️ もどす',undo);
+ mk('🏠 メニュー',toMenu);
+ setTimeout(()=>$('#end').style.display='flex',500)}
+function move(f,t){hist.push(board.slice());const cap=board[t];
+ board=ap(board,f,t);last=[f,t];sel=null;
+ if(cap&&cap[0]==='k')return finish(true);
+ const pr=board[t][0]!==hist[hist.length-1][f][0];
+ turn=1;busy=true;say((cap?'やったね！ とったよ ✨':pr?'パワーアップ！ ✨':'いいね！')+' あいての ばんだよ…');render();
+ setTimeout(cpu,700)}
+function cpu(){const m=pick(board,1,level);busy=false;
+ if(!m)return finish(true);
+ const cap=board[m[1]];board=ap(board,m[0],m[1]);last=m;
+ if(cap&&cap[0]==='k')return finish(false);
+ turn=0;say(cap?'あっ とられちゃった！ '+(mode==='train'?'「もどす」で やりなおせるよ':''):'あなたの ばんだよ 🌸');render()}
+function undo(){if(busy||!hist.length)return say('これ以上は もどせないよ');
+ board=hist.pop();turn=0;over=false;sel=null;hint=null;last=null;say('もどしたよ！ もういちど かんがえよう 🌸');render()}
+function showHint(){if(busy||over||turn)return;const m=pick(board,0,3);if(!m)return;
+ hint=m;sel=null;say('ヒント：ひかっている 駒を ひかっている マスへ！ 💡');render()}
+function newGame(){board=init();turn=0;sel=null;hist=[];over=false;last=null;hint=null;busy=false;
+ $('#menu').style.display='none';$('#game').style.display='flex';
+ const bar=$('#bar');bar.innerHTML='';
+ const mk=(t,f,c)=>{const b=document.createElement('button');b.className='sm';b.textContent=t;b.onclick=f;bar.appendChild(b)};
+ if(mode==='train'){mk('↩️ もどす',undo);mk('💡 ヒント',showHint)}
+ mk('📖 ずかん',zukan);mk('🔁 さいしょから',newGame);mk('🏠 メニュー',toMenu);
+ say(mode==='train'?'あなたの ばんだよ。駒を タップしてね 👆':'たいせん スタート！ 駒を タップしてね 👆');render()}
+function toMenu(){$('#game').style.display='none';$('#menu').style.display='block';$('#end').style.display='none'}
+function desc(){$('#modeDesc').innerHTML=mode==='train'?'💡 駒を タップすると いけるマスが ひかるよ！<br>「もどす」「ヒント」も つかえるよ':'ひかり・もどす・ヒント なし の ほんばん！'}
+function bindGroup(id,fn){document.querySelectorAll('#'+id+' button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('on'));b.classList.add('on');fn(b.dataset.v)})}
+bindGroup('modes',v=>{mode=v;desc()});bindGroup('levels',v=>level=+v);
+const ZD=[['k','王','おう','👑','ぜったい まもる おひめさま！ とられたら まけ。ぐるっと 1マス。','',''],['r','飛車','ひしゃ','🐉','たて・よこに どこまでも！ いちばん つよい なかま。','R','竜（りゅう）'],['b','角','かく','🦄','ななめに どこまでも！ ひしゃと ならぶ つよさ。','B','馬（うま）'],['g','金','きん','🐻','まえ・よこ・うしろに 1マス。かたくて たよれるよ！','',''],['s','銀','ぎん','🐰','まえ 3つと、うしろの ななめに 1マス。','S','成銀（なりぎん）'],['n','桂','けい','🐴','2マスまえの よこへ ジャンプ！ ほかの 駒も とびこえるよ。','N','成桂（なりけい）'],['l','香','きょう','🦊','まえに まっすぐ どこまでも！ うしろには いけないよ。','L','成香（なりきょう）'],['p','歩','ふ','🐣','まえに 1マス。いちばん おおい なかま。てきの じんちで「と」に！','P','と']];
+function mini(t){const b=Array(81).fill('');b[40]=t+'0';const m=mv(b,40);let h='<div class="mg">';for(let i=0;i<81;i++)h+='<i class="'+(i===40?'me':m.includes(i)?'mo':'')+'">'+(i===40?KJ[t]:'')+'</i>';return h+'</div>'}
+function zukan(){let h='';for(const[t,n,y,e,tx,T,pn]of ZD){h+='<div class="zc"><div class="zh"><span class="ze">'+e+'</span>'+n+'（'+y+'）</div><p>'+tx+'</p><div class="zr"><div><div class="pc m zp">'+KJ[t]+'</div><small>ふつう</small>'+mini(t)+'</div>'+(T?'<div class="za">なると<br>➡️✨</div><div><div class="pc m pr zp">'+KJ[T]+'</div><small>'+pn+'</small>'+mini(T)+'</div>':'<div class="za">なれない<br>よ</div>')+'</div></div>'}
+ $('#zl').innerHTML=h;$('#zk').style.display='block';$('#zk').scrollTop=0}
+$('#zkBtn').onclick=zukan;$('#zkClose').onclick=()=>$('#zk').style.display='none';
+$('#start').onclick=newGame;desc();
+</script></body></html>
