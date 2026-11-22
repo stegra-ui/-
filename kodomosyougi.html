@@ -2,6 +2,7 @@
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>こどもしょうぎ</title>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#fff0f6;--card:#fff;--ink:#6b3a5b;--pink:#ff8fb8;--pink2:#ffd1e3;--lav:#c9b8ff;--board:#ffe9b8;--line:#e0b97a;--hint:#5fd9b0;--sel:#ffd54a;--red:#e0457b;--pm:#ffe0ee;--pe:#e6deff;--pt:#5a3a2a;
@@ -50,6 +51,8 @@ button.sm{font-size:15px;padding:9px 13px;background:var(--lav);box-shadow:0 4px
 .mg{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(9,minmax(0,1fr));width:128px;aspect-ratio:1;margin:4px auto;background:var(--board);border-radius:8px;padding:2px;box-sizing:border-box}
 .mg i{min-width:0;min-height:0;overflow:hidden;border:1px solid var(--line);font-style:normal;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--pt)}
 .mg i.mo{background:var(--hint)}.mg i.me{background:var(--pm)}
+#code{font:inherit;font-size:28px;font-weight:900;width:5.2em;text-align:center;border:3px solid var(--lav);border-radius:14px;padding:6px;background:var(--card);color:var(--ink);letter-spacing:.2em;box-sizing:border-box}
+#olmsg{font-size:17px;font-weight:900;margin-top:10px;min-height:1.6em}
 @keyframes b{0%{transform:scale(.3)}70%{transform:scale(1.08)}}
 </style></head><body>
 <h1>🌸 こども しょうぎ 🌸</h1>
@@ -58,6 +61,7 @@ button.sm{font-size:15px;padding:9px 13px;background:var(--lav);box-shadow:0 4px
   <div class="row" id="modes">
     <button class="opt on" data-v="train">🌟 トレーニング</button>
     <button class="opt" data-v="play">⚔️ たいせん</button>
+    <button class="opt" data-v="online">🌐 ネットたいせん</button>
   </div>
   <div class="rule" id="modeDesc"></div>
   <h3>あいての つよさ</h3>
@@ -67,6 +71,7 @@ button.sm{font-size:15px;padding:9px 13px;background:var(--lav);box-shadow:0 4px
     <button class="opt" data-v="3">🦁 つよい</button>
   </div>
   <button class="go" id="start">はじめる！</button>
+  <div id="olp" style="display:none"><h3>ともだちと ネットたいせん</h3><div class="row"><button id="mkRoom">🏠 へやを つくる</button></div><div class="rule">または ともだちの 合言葉（4けた）を いれてね</div><div class="row" style="margin-top:8px"><input id="code" inputmode="numeric" maxlength="4" placeholder="0000"><button id="joinRoom">はいる</button></div><div id="olmsg"></div></div>
   <div><button class="sm" id="zkBtn" style="margin-top:14px">📖 こま ずかん</button></div>
   <div class="rule">👑 あいての「玉」を さきに とったら かち！<br>🌸 ピンクが あなた（したがわ）。てきの じんちに はいると 赤い字に <b>パワーアップ</b>（なり）！<br>※ とった駒は つかえない かんたんルールだよ</div>
 </div>
@@ -82,7 +87,7 @@ const $=s=>document.querySelector(s);
 const KJ={p:'歩',l:'香',n:'桂',s:'銀',g:'金',b:'角',r:'飛',k:'王',P:'と',L:'杏',N:'圭',S:'全',B:'馬',R:'竜'};
 const V={p:1,l:3,n:3,s:5,g:6,b:8,r:10,P:6,L:6,N:6,S:6,B:11,R:13,k:1000};
 const EX={p:'歩（ふ）：まえに 1マス',l:'香（きょうしゃ）：まえに まっすぐ いくつでも！',n:'桂（けいま）：2マスまえの よこへ ジャンプ！',s:'銀（ぎん）：まえ3つと、うしろの ななめ',g:'金（きん）：まえ・よこ・うしろ に 1マス',b:'角（かく）：ななめに いくつでも！',r:'飛（ひしゃ）：たて・よこに いくつでも！',k:'王（おう）：ぐるっと 1マス。とられたら まけ！',P:'と：金と おなじ うごき',L:'成香：金と おなじ うごき',N:'成桂：金と おなじ うごき',S:'成銀：金と おなじ うごき',B:'馬（うま）：角 ＋ まわり1マス',R:'竜（りゅう）：飛車 ＋ ななめ1マス'};
-let mode='train',level=1,board,turn,sel,hist,over,last,hint,busy;
+let mode='train',level=1,board,turn,sel,hist,over,last,hint,busy,me=0,conn=null,peer=null;
 const D8=[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]],DG=[[1,1],[1,-1],[-1,1],[-1,-1]],OR=[[1,0],[-1,0],[0,1],[0,-1]];
 function init(){const s='lnsgkgsnl',m=Array(81).fill('');
  for(let x=0;x<9;x++){m[x]=s[x]+'1';m[18+x]='p1';m[54+x]='p0';m[72+x]=s[x]+'0'}
@@ -117,17 +122,17 @@ function pick(b,s,lv){const ms=all(b,s);if(!ms.length)return null;
 function say(t){$('#msg').textContent=t}
 function render(){const B=$('#board');B.innerHTML='';
  const tg=sel!=null?mv(board,sel):[];
- for(let i=0;i<81;i++){const c=board[i],d=document.createElement('div');let k='c';
+ for(let j=0;j<81;j++){const i=me?80-j:j,c=board[i],d=document.createElement('div');let k='c';
   if(last&&(i===last[0]||i===last[1]))k+=' last';if(i===sel)k+=' sel';
   if(mode==='train'&&tg.includes(i))k+=' t'+(c?' cp':'');
   if(hint&&(i===hint[0]||i===hint[1]))k+=' hint';
   d.className=k;
-  if(c){const t=c[0],s=+c[1],p=document.createElement('div');p.className='pc '+(s?'e':'m')+((t!=='k'&&t===t.toUpperCase())?' pr':'');p.textContent=(t==='k'&&s)?'玉':KJ[t];d.appendChild(p)}
+  if(c){const t=c[0],s=+c[1],p=document.createElement('div');p.className='pc '+(s===me?'m':'e')+((t!=='k'&&t===t.toUpperCase())?' pr':'');p.textContent=(t==='k'&&s)?'玉':KJ[t];d.appendChild(p)}
   d.onclick=()=>tap(i);B.appendChild(d)}}
-function tap(i){if(over||turn!==0||busy)return;hint=null;
+function tap(i){if(over||turn!==me||busy)return;hint=null;
  if(sel!=null&&mv(board,sel).includes(i))return move(sel,i);
  const c=board[i];
- if(c&&c[1]==='0'){sel=i;say(mode==='train'?EX[c[0]]+' ／ ひかった ところへ いけるよ！':'どこへ うごかす？');}
+ if(c&&+c[1]===me){sel=i;say(mode==='train'?EX[c[0]]+' ／ ひかった ところへ いけるよ！':'どこへ うごかす？');}
  else{sel=null;say('すきな 駒を タップしてね 👆')}
  render()}
 function finish(win){over=true;render();
@@ -139,10 +144,11 @@ function finish(win){over=true;render();
  if(!win&&mode==='train')mk('↩️ もどす',undo);
  mk('🏠 メニュー',toMenu);
  setTimeout(()=>$('#end').style.display='flex',500)}
-function move(f,t){hist.push(board.slice());const cap=board[t];
+function move(f,t){if(mode==='online'&&conn)conn.send({t:'mv',f,m:t});hist.push(board.slice());const cap=board[t];
  board=ap(board,f,t);last=[f,t];sel=null;
  if(cap&&cap[0]==='k')return finish(true);
  const pr=board[t][0]!==hist[hist.length-1][f][0];
+ if(mode==='online'){turn=1-me;say((cap?'やったね！ とったよ ✨':'いいね！')+' あいての ばんだよ…');return render()}
  turn=1;busy=true;say((cap?'やったね！ とったよ ✨':pr?'パワーアップ！ ✨':'いいね！')+' あいての ばんだよ…');render();
  setTimeout(cpu,700)}
 function cpu(){const m=pick(board,1,level);busy=false;
@@ -154,21 +160,38 @@ function undo(){if(busy||!hist.length)return say('これ以上は もどせな�
  board=hist.pop();turn=0;over=false;sel=null;hint=null;last=null;say('もどしたよ！ もういちど かんがえよう 🌸');render()}
 function showHint(){if(busy||over||turn)return;const m=pick(board,0,3);if(!m)return;
  hint=m;sel=null;say('ヒント：ひかっている 駒を ひかっている マスへ！ 💡');render()}
-function newGame(){board=init();turn=0;sel=null;hist=[];over=false;last=null;hint=null;busy=false;
+function newGame(r){if(r!==true&&mode==='online'&&conn)conn.send({t:'again'});if(mode!=='online')me=0;$('#end').style.display='none';board=init();turn=0;sel=null;hist=[];over=false;last=null;hint=null;busy=false;
  $('#menu').style.display='none';$('#game').style.display='flex';
  const bar=$('#bar');bar.innerHTML='';
  const mk=(t,f,c)=>{const b=document.createElement('button');b.className='sm';b.textContent=t;b.onclick=f;bar.appendChild(b)};
  if(mode==='train'){mk('↩️ もどす',undo);mk('💡 ヒント',showHint)}
  mk('📖 ずかん',zukan);mk('🔁 さいしょから',newGame);mk('🏠 メニュー',toMenu);
- say(mode==='train'?'あなたの ばんだよ。駒を タップしてね 👆':'たいせん スタート！ 駒を タップしてね 👆');render()}
-function toMenu(){$('#game').style.display='none';$('#menu').style.display='block';$('#end').style.display='none'}
-function desc(){$('#modeDesc').innerHTML=mode==='train'?'💡 駒を タップすると いけるマスが ひかるよ！<br>「もどす」「ヒント」も つかえるよ':'ひかり・もどす・ヒント なし の ほんばん！'}
+ say(mode==='online'?(me?'あいての ばんだよ… まっててね':'あなたの ばんだよ！ 駒を タップしてね 👆'):mode==='train'?'あなたの ばんだよ。駒を タップしてね 👆':'たいせん スタート！ 駒を タップしてね 👆');render()}
+function ol(m){$('#olmsg').textContent=m}
+function lobby(){const on=mode==='online';$('#olp').style.display=on?'block':'none';$('#levels').style.display=on?'none':'';$('#levels').previousElementSibling.style.display=on?'none':'';$('#start').style.display=on?'none':''}
+function recv(d){if(d.t==='mv'){const cap=board[d.m];board=ap(board,d.f,d.m);last=[d.f,d.m];sel=null;if(cap&&cap[0]==='k')return finish(false);turn=me;say('あなたの ばんだよ 🌸');render()}else if(d.t==='again')newGame(true)}
+function setup(c,side){conn=c;me=side;c.on('data',recv);
+ c.on('close',()=>{if($('#game').style.display==='flex'){over=true;busy=false;say('つうしんが きれちゃった… メニューに もどってね')}else ol('つうしんが きれたよ')});
+ const go=()=>{mode='online';newGame(true)};c.open?go():c.on('open',go)}
+function killPeer(){if(peer){try{peer.destroy()}catch(e){}}peer=null;conn=null}
+function mkRoom(){if(!window.Peer)return ol('つうしんの じゅんびが できてないよ。ネットを かくにんしてね');
+ killPeer();const code=String(1000+Math.random()*9000|0);peer=new Peer('kshogi-'+code);ol('じゅんびちゅう…');
+ peer.on('open',()=>ol('合言葉は 【'+code+'】 ともだちが はいるのを まってるよ…'));
+ peer.on('connection',c=>setup(c,0));
+ peer.on('error',e=>ol(e.type==='unavailable-id'?'もういちど おしてね（合言葉が かぶったよ）':'うまく つながらないよ。もういちど ためしてね'))}
+function joinRoom(){const code=$('#code').value.trim();if(!/^\d{4}$/.test(code))return ol('4けたの 合言葉を いれてね');
+ if(!window.Peer)return ol('つうしんの じゅんびが できてないよ。ネットを かくにんしてね');
+ killPeer();peer=new Peer();ol('つなぎちゅう…');
+ peer.on('open',()=>setup(peer.connect('kshogi-'+code,{reliable:true}),1));
+ peer.on('error',e=>ol(e.type==='peer-unavailable'?'その 合言葉の へやが みつからないよ':'うまく つながらないよ。もういちど ためしてね'))}
+function toMenu(){killPeer();ol('');$('#game').style.display='none';$('#menu').style.display='block';$('#end').style.display='none'}
+function desc(){$('#modeDesc').innerHTML=mode==='train'?'💡 駒を タップすると いけるマスが ひかるよ！<br>「もどす」「ヒント」も つかえるよ':mode==='online'?'📱 べつの たんまつの ともだちと たいせん！ 合言葉で つながるよ':'ひかり・もどす・ヒント なし の ほんばん！'}
 function bindGroup(id,fn){document.querySelectorAll('#'+id+' button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('on'));b.classList.add('on');fn(b.dataset.v)})}
-bindGroup('modes',v=>{mode=v;desc()});bindGroup('levels',v=>level=+v);
+bindGroup('modes',v=>{mode=v;desc();lobby()});bindGroup('levels',v=>level=+v);
 const ZD=[['k','王','おう','👑','ぜったい まもる おひめさま！ とられたら まけ。ぐるっと 1マス。','',''],['r','飛車','ひしゃ','🐉','たて・よこに どこまでも！ いちばん つよい なかま。','R','竜（りゅう）'],['b','角','かく','🦄','ななめに どこまでも！ ひしゃと ならぶ つよさ。','B','馬（うま）'],['g','金','きん','🐻','まえ・よこ・うしろに 1マス。かたくて たよれるよ！','',''],['s','銀','ぎん','🐰','まえ 3つと、うしろの ななめに 1マス。','S','成銀（なりぎん）'],['n','桂','けい','🐴','2マスまえの よこへ ジャンプ！ ほかの 駒も とびこえるよ。','N','成桂（なりけい）'],['l','香','きょう','🦊','まえに まっすぐ どこまでも！ うしろには いけないよ。','L','成香（なりきょう）'],['p','歩','ふ','🐣','まえに 1マス。いちばん おおい なかま。てきの じんちで「と」に！','P','と']];
 function mini(t){const b=Array(81).fill('');b[40]=t+'0';const m=mv(b,40);let h='<div class="mg">';for(let i=0;i<81;i++)h+='<i class="'+(i===40?'me':m.includes(i)?'mo':'')+'">'+(i===40?KJ[t]:'')+'</i>';return h+'</div>'}
 function zukan(){let h='';for(const[t,n,y,e,tx,T,pn]of ZD){h+='<div class="zc"><div class="zh"><span class="ze">'+e+'</span>'+n+'（'+y+'）</div><p>'+tx+'</p><div class="zr"><div><div class="pc m zp">'+KJ[t]+'</div><small>ふつう</small>'+mini(t)+'</div>'+(T?'<div class="za">なると<br>➡️✨</div><div><div class="pc m pr zp">'+KJ[T]+'</div><small>'+pn+'</small>'+mini(T)+'</div>':'<div class="za">なれない<br>よ</div>')+'</div></div>'}
  $('#zl').innerHTML=h;$('#zk').style.display='block';$('#zk').scrollTop=0}
 $('#zkBtn').onclick=zukan;$('#zkClose').onclick=()=>$('#zk').style.display='none';
-$('#start').onclick=newGame;desc();
+$('#start').onclick=newGame;$('#mkRoom').onclick=mkRoom;$('#joinRoom').onclick=joinRoom;desc();
 </script></body></html>
