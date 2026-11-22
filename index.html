@@ -83,7 +83,9 @@
     font-size: 12px;
     margin-left: 6px;
   }
+  .note-blue { color: #2b6cb0; }
   .graduation-note { margin: 6px 0 0 0; }
+  .crowded-note { margin: 6px 0 0 0; font-weight: bold; }
 
   /* 予約完了画面のご予約日の表示 */
   .reservation-date-box {
@@ -96,6 +98,7 @@
   }
   .reservation-date-label { font-size: 13px; color: #555; }
   .reservation-date-value { font-size: 22px; font-weight: bold; margin: 6px 0 10px; color: #1a4a80; }
+  .reservation-hours-note { font-size: 14px; font-weight: bold; color: #2b6cb0; margin: 0 0 10px; }
   .reservation-date-note { font-size: 13px; font-weight: bold; color: #b3261e; }
 
   /* 管理ページの絞り込み */
@@ -110,7 +113,9 @@
     position: absolute;
     top: calc(100% + 6px);
     left: 0;
-    width: 280px;
+    width: 100%;
+    min-width: 300px;
+    max-width: 360px;
     background: #fff;
     border: 1px solid #ddd;
     border-radius: 6px;
@@ -156,6 +161,11 @@
     cursor: default;
   }
   .calendar-day.selected { background: #2b6cb0; color: #fff; }
+  .calendar-mark { display: block; font-size: 10px; line-height: 1; margin-top: 2px; color: #b3261e; }
+  .calendar-day.selected .calendar-mark { color: #fff; }
+  .calendar-hours { display: block; font-size: 9px; line-height: 1.2; margin-top: 2px; color: #2b6cb0; white-space: nowrap; }
+  .calendar-day.selected .calendar-hours { color: #fff; }
+  .calendar-legend { margin-top: 8px; font-size: 11px; color: #555; }
   .calendar-day.empty { background: transparent; cursor: default; }
   .calendar-footer {
     margin-top: 10px;
@@ -182,9 +192,15 @@ const SCHOOLS = ['木二中', '太田中', '波岡中', '畑沢中', '金田中'
 // 年末年始休業期間（この期間は希望日として選択できない）
 const CLOSED_START = '2026-12-30';
 const CLOSED_END = '2027-01-05';
+// 上の期間のほかに、個別に選択できない日
+const CLOSED_DATES = ['2027-01-28', '2027-01-29'];
 // カレンダーに表示する日付の範囲
 const DATE_MIN = '2026-11-29';
 const DATE_MAX = '2027-01-31';
+// 混雑が予想される日（選ぶと注意書きを表示する）
+const CROWDED_DATES = ['2026-11-29', '2026-12-06'];
+// 16時～19時営業の日（カレンダーのマスに表示する。12/28は通常営業のため含めない）
+const SHORT_HOURS_DATES = ['2026-12-08', '2026-12-18', '2027-01-08', '2027-01-18'];
 
 // 希望日カレンダーの状態
 let calendarViewYear;
@@ -262,12 +278,13 @@ function renderCustomerForm() {
         </select>
         <div class="note graduation-note">「使う」を選んだ方は、チラシの★マークの期日までに必ずご来店ください</div>
 
-        <label for="dateDisplay">希望日<span class="note">※時間の予約はできません／希望日なしでも予約可／8・18・28日は16時~19時営業／12月28日は通常営業</span></label>
+        <label for="dateDisplay">希望日<span class="note note-blue">※時間の予約はできません／希望日なしでも予約可／8・18日は16時~19時営業／12月28日は通常営業</span></label>
         <div class="date-field-wrapper">
           <input type="text" id="dateDisplay" readonly placeholder="選択してください（任意）">
           <input type="hidden" id="date">
           <div class="calendar-popup" id="calendarPopup" style="display:none;"></div>
         </div>
+        <div class="note crowded-note" id="crowdedNote" style="display:none;">※ご予約が多く、混雑が予想されます</div>
 
         <label for="menu">メニュー</label>
         <select id="menu" required>
@@ -304,8 +321,8 @@ function renderCustomerForm() {
       menu: document.getElementById('menu').value
     };
 
-    if (data.date && data.date >= CLOSED_START && data.date <= CLOSED_END) {
-      messageEl.innerHTML = '<div class="message error">誠に申し訳ございませんが、12/30～1/5は年末年始休業のため、その期間を希望日として選択することはできません。別の日付をご指定ください。</div>';
+    if (data.date && isDateDisabled(data.date)) {
+      messageEl.innerHTML = '<div class="message error">誠に申し訳ございませんが、選択された日付は休業日のため、希望日として選択することはできません。別の日付をご指定ください。</div>';
       submitBtn.disabled = false;
       submitBtn.textContent = '予約する';
       return;
@@ -340,6 +357,11 @@ function buildCompletionHtml(dateStr) {
     dateText = `${y}年${m + 1}月${d}日（${weekday}）`;
   }
 
+  // 16時～19時営業の日（12月・1月の8日と18日）を選んだ場合は、営業時間の注意書きを入れる
+  const hoursNote = SHORT_HOURS_DATES.includes(dateStr)
+    ? '<div class="reservation-hours-note">営業時間は16時～19時となります</div>'
+    : '';
+
   return `
     <div class="message success">
       予約を受け付けました<br>
@@ -349,6 +371,7 @@ function buildCompletionHtml(dateStr) {
     <div class="reservation-date-box">
       <div class="reservation-date-label">お客様のご予約日</div>
       <div class="reservation-date-value">${dateText}</div>
+      ${hoursNote}
       <div class="reservation-date-note">※ご予約日を忘れないよう、画面のスクリーンショットの保存をお勧めいたします。</div>
     </div>
     <div class="message success">
@@ -390,6 +413,13 @@ function initFuriganaAutofill() {
 // ===== 希望日用の自作カレンダー =====
 // ネイティブのinput type="date"では範囲の途中だけを選択不可にできないため、
 // 自作のカレンダーポップアップで休業期間をグレーアウトして選択できないようにする
+// 選ばれている希望日が混雑予想日なら注意書きを表示し、それ以外は隠す
+function updateCrowdedNote() {
+  const el = document.getElementById('crowdedNote');
+  if (!el) return;
+  el.style.display = CROWDED_DATES.includes(calendarSelectedDate) ? 'block' : 'none';
+}
+
 function parseDateStr(str) {
   const [y, m, d] = str.split('-').map(Number);
   return { y, m: m - 1, d };
@@ -404,6 +434,7 @@ function toDateStr(y, m, d) {
 function isDateDisabled(dateStr) {
   if (dateStr < DATE_MIN || dateStr > DATE_MAX) return true;
   if (dateStr >= CLOSED_START && dateStr <= CLOSED_END) return true;
+  if (CLOSED_DATES.includes(dateStr)) return true;
   return false;
 }
 
@@ -457,7 +488,9 @@ function renderCalendar() {
     const dateStr = toDateStr(calendarViewYear, calendarViewMonth, d);
     const disabled = isDateDisabled(dateStr);
     const selected = dateStr === calendarSelectedDate;
-    cellsHtml += `<div class="calendar-day${disabled ? ' disabled' : ''}${selected ? ' selected' : ''}" data-date="${dateStr}">${d}</div>`;
+    const mark = CROWDED_DATES.includes(dateStr) ? '<span class="calendar-mark">△</span>' : '';
+    const hours = SHORT_HOURS_DATES.includes(dateStr) ? '<span class="calendar-hours">16時～<br>19時営業</span>' : '';
+    cellsHtml += `<div class="calendar-day${disabled ? ' disabled' : ''}${selected ? ' selected' : ''}" data-date="${dateStr}">${d}${mark}${hours}</div>`;
   }
 
   popup.innerHTML = `
@@ -467,6 +500,7 @@ function renderCalendar() {
       <button type="button" class="calendar-nav-btn" id="calNextBtn" ${isNextDisabled ? 'disabled' : ''}>&gt;</button>
     </div>
     <div class="calendar-grid">${cellsHtml}</div>
+    <div class="calendar-legend">△：混雑が予想されます</div>
     <div class="calendar-footer">
       <button type="button" class="calendar-clear-btn" id="calClearBtn">選択なし</button>
     </div>
@@ -500,6 +534,7 @@ function renderCalendar() {
       document.getElementById('date').value = dateStr;
       document.getElementById('dateDisplay').value = dateStr;
       popup.style.display = 'none';
+      updateCrowdedNote();
     });
   });
 
@@ -509,6 +544,7 @@ function renderCalendar() {
     document.getElementById('date').value = '';
     document.getElementById('dateDisplay').value = '';
     popup.style.display = 'none';
+    updateCrowdedNote();
   });
 }
 
