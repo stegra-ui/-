@@ -284,7 +284,7 @@ function renderCustomerForm() {
           <input type="hidden" id="date">
           <div class="calendar-popup" id="calendarPopup" style="display:none;"></div>
         </div>
-        <div class="note crowded-note" id="crowdedNote" style="display:none;">※ご予約が多く、混雑が予想されます</div>
+        <div class="note crowded-note" id="crowdedNote" style="display:none;">※予約多数･お待ちいただく場合があります</div>
 
         <label for="menu">メニュー</label>
         <select id="menu" required>
@@ -500,7 +500,7 @@ function renderCalendar() {
       <button type="button" class="calendar-nav-btn" id="calNextBtn" ${isNextDisabled ? 'disabled' : ''}>&gt;</button>
     </div>
     <div class="calendar-grid">${cellsHtml}</div>
-    <div class="calendar-legend">△：混雑が予想されます</div>
+    <div class="calendar-legend">△：予約多数･お待ちいただく場合があります</div>
     <div class="calendar-footer">
       <button type="button" class="calendar-clear-btn" id="calClearBtn">選択なし</button>
     </div>
